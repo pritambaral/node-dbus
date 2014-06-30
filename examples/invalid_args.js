@@ -6,13 +6,12 @@ var bus = dbus.getBus('session');
 
 bus.getInterface('nodejs.dbus.ExampleService', '/nodejs/dbus/ExampleService', 'nodejs.dbus.ExampleService.Interface1', function(err, iface) {
 
-	iface.Equal['timeout'] = 1000;
-	iface.Equal['error'] = function(err) {
-		console.log(err);
-	};
-	iface.Equal['finish'] = function(result) {
-		console.log(result);
-	};
-	iface.Equal();
+	iface.Equal(function(err, result) {
+		if (err) {
+			console.log(err)
+		} else {
+			console.log(result)
+		}
+	}, 1000);
 
 });

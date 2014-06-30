@@ -6,36 +6,40 @@ var bus = dbus.getBus('session');
 
 bus.getInterface('nodejs.dbus.ExampleService', '/nodejs/dbus/ExampleService', 'nodejs.dbus.ExampleService.Interface1', function(err, iface) {
 
-	iface.SendObject['timeout'] = 1000;
-	iface.SendObject['finish'] = function(result) {
-		console.log(result);
-	};
-
 	iface.SendObject({
 		name: 'Fred',
 		email: 'cfsghost@gmail.com'
-	});
+	}, function(err, result) {
+    if (err) {
+      console.log(err)
+    } else {
+      console.log(result)
+    }
+  }, 1000);
 
 	// Blank object
 	iface.SendObject({});
 
 	// Testing method with no return value
-	iface.Dummy['timeout'] = 1000;
-	iface.Dummy['finish'] = function() {
-		console.log('Dummy');
-	};
-	iface.Dummy();
+	iface.Dummy(function(err, result) {
+		console.log('Dummy')
+	}, 1000);
 
 	// Testing method with complex dictionary object
-	iface.GetContacts['timeout'] = 1000;
-	iface.GetContacts['finish'] = function(contacts) {
-		console.log(contacts);
-	};
-	iface.GetContacts();
+	iface.GetContacts(function(err, contacts) {
+		if (err) {
+			console.log(err)
+		} else {
+			console.log(contacts)
+		}
+	}, 1000);
 
 	// Error handling
-	iface.SendObject['finish'] = function(ret) {
-		console.log(ret);
-	};
-	iface.SendObject('Wrong arguments');
+	iface.SendObject('Wrong arguments', function(err, result) {
+		if (err) {
+			console.log(err)
+		} else {
+			console.log(result)
+		}
+	});
 });
