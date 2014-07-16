@@ -12,28 +12,34 @@ namespace Encoder {
 	using namespace v8;
 	using namespace std;
 
-	const char *GetSignatureFromV8Type(Handle<Value>& value)
+	char *GetSignatureFromV8Type(Handle<Value>& value)
 	{
+    HandleScope scope;
+    char* s = NULL;
 		if (value->IsTrue() || value->IsFalse() || value->IsBoolean() ) {
-			return const_cast<char*>(DBUS_TYPE_BOOLEAN_AS_STRING);
+			s = strdup((char*)(DBUS_TYPE_BOOLEAN_AS_STRING));
 		} else if (value->IsInt32()) {
-			return const_cast<char*>(DBUS_TYPE_INT32_AS_STRING);
+			s = strdup((char*)(DBUS_TYPE_INT32_AS_STRING));
 		} else if (value->IsUint32()) {
-			return const_cast<char*>(DBUS_TYPE_UINT32_AS_STRING);
+			s = strdup((char*)(DBUS_TYPE_UINT32_AS_STRING));
 		} else if (value->IsNumber()) {
-			return const_cast<char*>(DBUS_TYPE_DOUBLE_AS_STRING);
+			s = strdup((char*)(DBUS_TYPE_DOUBLE_AS_STRING));
 		} else if (value->IsString()) {
-			return const_cast<char*>(DBUS_TYPE_STRING_AS_STRING);
-		} else if (value->IsArray()) {
-			return const_cast<char*>(DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_VARIANT_AS_STRING);
+			s = strdup((char*)(DBUS_TYPE_STRING_AS_STRING));
 		} else if (value->IsObject()) {
-			return const_cast<char*>(DBUS_TYPE_ARRAY_AS_STRING
-				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-				DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-				DBUS_DICT_ENTRY_END_CHAR_AS_STRING);
-		} else {
-			return NULL;
+			Local<String> sign = String::New("signature");
+			if (value->ToObject()->Has(sign)) {
+				s = strdup(*String::AsciiValue(value->ToObject()->Get(sign)->ToString()));
+			} else if (value->IsArray()) {
+				s = strdup((char*)(DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_VARIANT_AS_STRING));
+			} else {
+				s = strdup((char*)(DBUS_TYPE_ARRAY_AS_STRING
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING));
+			}
 		}
+		return s;
 	}
 
 	bool EncodeObject(Handle<Value> value, DBusMessageIter *iter, const char *signature)
@@ -208,19 +214,20 @@ namespace Encoder {
 		{
 			DBusMessageIter subIter;
 
-			const char *var_sig = GetSignatureFromV8Type(value);
+			char *var_sig = GetSignatureFromV8Type(value);
+			bool ret = dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, var_sig, &subIter);
 
-			if (!dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, var_sig, &subIter)) {
-				printf("Can't open contianer for VARIANT type\n");
-				return false;
+			if (!ret) {
+				printf("Can't open container for VARIANT type\n");
+				goto cleanup;
 			}
 
-			if (!EncodeObject(value, &subIter, var_sig)) { 
-				dbus_message_iter_close_container(iter, &subIter);
-				return false;
-			}
-
+			ret = EncodeObject(value, &subIter, var_sig);
 			dbus_message_iter_close_container(iter, &subIter);
+
+cleanup:
+			free(var_sig);
+			if(!ret) return false;
 
 			break;
 		}
